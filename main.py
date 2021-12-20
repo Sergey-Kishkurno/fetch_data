@@ -1,28 +1,22 @@
 import os
-import requests
-import json
-from pprintpp import pprint
+from dotenv import load_dotenv
 from config import Config
 from urllib.parse import urljoin
+from pprintpp import pprint
 
-# url: https://robot-dreams-de-api.herokuapp.com
-
-# endpoint: /auth
-# payload: {"username": "rd_dreams", "password": "djT6LasE"}
-# output type: JWT TOKEN
-
-# endpoint: /out_of_stock
-# payload: {"date": "2021-01-02"}
-# auth: JWT <jwt_token>
+import requests
+import json
+from datetime import date, datetime, timedelta
 
 
 class Loader:
-    def __init__(self, url, creds, headers, date):
-        self._file_basepath = "/files/"
+    def __init__(self, url, creds, headers, start_date, end_date):
+        self._file_basepath = "files/"
         self._url = url
         self._creds = creds
         self._headers = headers
-        self._date = date
+        self._start_date = start_date   # in format "2021-01-01"
+        self._end_date = end_date       # in format "2021-12-15"
 
     def _auth_for_load(self):
         url_auth = urljoin(self._url, "/auth")
@@ -33,51 +27,86 @@ class Loader:
 
     def load(self) -> None:
 
-        # pprint("--- Start loading... ---------------------")
-
+        # Authorize on the data service via JWT
         jwt = self._auth_for_load()
 
-        # pprint(jwt)
-
+        # Prepare the general part of parameters
         url_load = urljoin(self._url, "/out_of_stock")
-        _headers = {'authorization': 'JWT {}'.format(jwt)}
-        _data = {"date" : self._date}
+        _headers = {
+            "authorization": 'JWT {}'.format(jwt),
+            "content-type": "application/json"
+        }
 
-        # pprint("_headers: ")
-        # pprint(_headers)
+        # Prepare daily iteration between start_date and end_date
+        sy, sm, sd = self._start_date.split('-')
+        ey, em, ed = self._end_date.split('-')
 
-        response = requests.get(url_load, headers=_headers, data=_data)
-        data = response.json()
+        # Time measurements:
+        time_loading_started = datetime.now()
+        pprint('---- Start loading...--------------------------------------------------------------------------')
+        pprint(f'---- Start_date =[{self._start_date}], end_date = [{self._end_date}] '
+               f'----------------------------------------')
+        pprint(f'---- Timestamp:{time_loading_started} -----------------------------------------------------')
 
-        # pprint(data)
+        # The main cycle of iteration - loading and saving on daily basis
+        for day in self.date_span(
+                        date(int(sy), int(sm), int(sd)),
+                        date(int(ey), int(em), int(ed)),
+                        timedelta(days=1)
+                    ):
+            _data = json.dumps(
+                       {"date": str(day)}
+                    )
+            _filename = self._file_basepath + str(day) + ".txt"
+            pprint(f"Date in iteration: [{_data}], write in file with the name: {_filename}")
+            try:
+                self.__load_and_save_daily_data(url_load, _headers, _data, _filename)
+            except Exception as e:
+                pprint(e)
 
-        name = self._date
-        self._save_to_file(data, name)
+        # Final time measurements:
+        time_loading_ended = datetime.now()
+        td = time_loading_ended - time_loading_started
+        pprint('---- Loading ended ----------------------------------------------------------------------------')
+        pprint(f'---- Timestamp:{time_loading_started} -----------------------------------------------------')
+        pprint(f'---- Downloading time:{td} ----------------------------------------------------------')
 
-    def _save_to_file(self, data, name):
 
-        _qname = self._file_basepath + name + ".txt"
-        pprint(f"Full path to file: {_qname}")
-        # os.chmod(_qname, 777)
-        with open(_qname, 'w', encoding='utf-8') as f:
-            f.write(json.dump(data))
+    def __load_and_save_daily_data(self, url, headers, data, filename):
+        response = requests.get(url, headers=headers, data=data)
+        response.raise_for_status()
+        result = response.json()
+        with open(filename, 'w+', encoding='utf-8') as f:
+            f.write(json.dumps(result))
+
+    def date_span(self, start_date, end_date, delta):
+        current_date = start_date
+        while current_date < end_date:
+            yield current_date
+            current_date += delta
 
 
 def app():
 
-    config = Config("./config.yml")
-    pprint(f"Loaded from YAML file configuration:", config.get_config())
-
-    # TODO: To be loaded via Config class
-    url = "https://robot-dreams-de-api.herokuapp.com"
-    creds = {
-        "username": "rd_dreams",
-        "password": "djT6LasE"
+    dotenv_path = os.path.join(os.path.dirname(''), '.env')
+    if os.path.exists(dotenv_path):
+        load_dotenv(dotenv_path)
+    _creds = {
+        "username": os.getenv('USERNAME'),
+        "password": os.getenv('PASSWORD')
     }
-    headers = {"content-type": "application/json"}
-    date = "2021-12-15"
 
-    ld = Loader(url, creds, headers, date)
+    # TODO: url, endpoints - to be loaded via Config class
+    config = Config("./config.yml")
+    pprint(f"TODO: Loaded from YAML file configuration:", config.get_config())
+
+    url = "https://robot-dreams-de-api.herokuapp.com"
+
+    headers = {"content-type": "application/json"}
+    start_date = "2021-04-25"
+    end_date = "2021-04-30"
+
+    ld = Loader(url, _creds, headers, start_date, end_date)
     try:
         ld.load()
     except Exception as e:
@@ -86,6 +115,3 @@ def app():
 
 if __name__ == '__main__':
     app()
-
-
-
