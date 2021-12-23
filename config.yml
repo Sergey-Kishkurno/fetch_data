@@ -1,0 +1,7 @@
+url:
+  "https://robot-dreams-de-api.herokuapp.com"
+headers:
+  "content-type": "application/json"
+dates:
+  "start_date": "2021-04-01"
+  "end_date": "2021-04-04"
