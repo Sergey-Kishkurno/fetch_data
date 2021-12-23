@@ -16,9 +16,7 @@ class Loader:
 
     def _auth_for_load(self):
         url_auth = urljoin(self._url, "/auth")
-        # pprint(url_auth)
         response = requests.post(url_auth, headers=self._headers, data=json.dumps(self._creds))
-        # pprint(response)
         return response.json().get("access_token")
 
     def load(self) -> None:
@@ -76,6 +74,6 @@ class Loader:
 
     def date_span(self, start_date, end_date, delta):
         current_date = start_date
-        while current_date < end_date:
+        while current_date <= end_date:
             yield current_date
             current_date += delta

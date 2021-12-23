@@ -1,5 +1,4 @@
 import os
-import yaml
 from dotenv import load_dotenv
 from pprintpp import pprint
 
@@ -17,16 +16,7 @@ def app():
         "password": os.getenv('PASSWORD')
     }
 
-    # TODO: url, endpoints - to be loaded via Config class
     config = Config("./config.yml").get_config()
-    # pprint(f"TODO: Loaded from YAML file configuration: {config.get_config()}")
-    # config.get_config()
-
-    url = "https://robot-dreams-de-api.herokuapp.com"
-
-    headers = {"content-type": "application/json"}
-    start_date = "2021-04-01"
-    end_date = "2021-04-01"
 
     ld = Loader (
         config['url'],
@@ -35,7 +25,7 @@ def app():
         config['dates']['start_date'],
         config['dates']['end_date']
     )
-    # ld = Loader(url, _creds, headers, start_date, end_date)
+
     try:
         ld.load()
     except Exception as e:
