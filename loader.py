@@ -67,6 +67,8 @@ class Loader:
 
     def __load_and_save_daily_data(self, url, headers, data, filename):
         response = requests.get(url, headers=headers, data=data)
+            # The better style is to add timeout:
+            # r = requests.get(url, headers=headers, data=data, timeout=10) # 10 seconds
         response.raise_for_status()
         result = response.json()
         with open(filename, 'w+', encoding='utf-8') as f:
